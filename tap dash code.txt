@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Tap Dash Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: manipulation;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: min(100vw, 400px);
+            height: min(100vh, 700px);
+            background: linear-gradient(to bottom, 
+                #ff9a9e 0%, 
+                #fecfef 20%, 
+                #fecfef 40%, 
+                #a8edea 60%, 
+                #fed6e3 80%, 
+                #d299c2 100%);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        #gameArea {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(255,255,255,0.1) 2px, transparent 2px),
+                radial-gradient(circle at 80% 70%, rgba(255,255,255,0.1) 1px, transparent 1px),
+                radial-gradient(circle at 40% 80%, rgba(255,255,255,0.08) 1px, transparent 1px);
+            background-size: 60px 60px, 80px 80px, 100px 100px;
+            animation: starfield 20s linear infinite;
+        }
+
+        @keyframes starfield {
+            0% { background-position: 0 0, 0 0, 0 0; }
+            100% { background-position: -60px 0, -80px 0, -100px 0; }
+        }
+
+        #player {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            left: 60px;
+            bottom: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            box-shadow: 
+                0 0 20px rgba(255, 107, 107, 0.6),
+                inset -3px -3px 6px rgba(0,0,0,0.2),
+                inset 3px 3px 6px rgba(255,255,255,0.3);
+            transition: transform 0.1s ease;
+            z-index: 10;
+        }
+
+        .player-trail {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 107, 107, 0.4);
+            pointer-events: none;
+            animation: trailFade 0.5s ease-out forwards;
+        }
+
+        @keyframes trailFade {
+            to {
+                opacity: 0;
+                transform: scale(0.1);
+            }
+        }
+
+        .obstacle {
+            position: absolute;
+            bottom: 120px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .obstacle-normal {
+            width: 25px;
+            height: 80px;
+        }
+
+        .obstacle-wide {
+            width: 40px;
+            height: 60px;
+        }
+
+        .obstacle-tall {
+            width: 20px;
+            height: 100px;
+        }
+
+        .obstacle-moving {
+            animation: obstacleFloat 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes obstacleFloat {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-20px); }
+        }
+
+        .power-up {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            bottom: 180px;
+            animation: powerUpFloat 1.5s ease-in-out infinite alternate;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+        }
+
+        .power-up-shield {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+        }
+
+        .power-up-speed {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        .power-up-jump {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+        }
+
+        @keyframes powerUpFloat {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(-15px) rotate(180deg); }
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 100%);
+            z-index: 100;
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #highScore {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        #level {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #powerUpStatus {
+            position: absolute;
+            top: 50px;
+            right: 20px;
+            font-size: 12px;
+            color: #ffeb3b;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(to bottom, 
+                rgba(76, 175, 80, 0.8) 0%,
+                rgba(56, 142, 60, 0.9) 50%,
+                rgba(27, 94, 32, 1) 100%);
+            border-top: 3px solid rgba(255,255,255,0.3);
+        }
+
+        .ground-decoration {
+            position: absolute;
+            bottom: 20px;
+            width: 15px;
+            height: 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            animation: groundMove 3s linear infinite;
+        }
+
+        @keyframes groundMove {
+            0% { transform: translateX(100vw); }
+            100% { transform: translateX(-50px); }
+        }
+
+        .screen-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+        }
+
+        .screen-content {
+            text-align: center;
+            color: white;
+            max-width: 80%;
+        }
+
+        .screen-title {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .screen-subtitle {
+            font-size: 1em;
+            margin-bottom: 30px;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #ffecd2, #fcb69f);
+            color: #333;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+            width: 100%;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .achievement {
+            position: fixed;
+            top: 20px;
+            right: -300px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.5s ease;
+            z-index: 2000;
+        }
+
+        .achievement.show {
+            right: 20px;
+        }
+
+        .shield-active {
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.8) !important;
+            animation: shieldPulse 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes shieldPulse {
+            0% { box-shadow: 0 0 20px rgba(0, 210, 255, 0.6); }
+            100% { box-shadow: 0 0 40px rgba(0, 210, 255, 1); }
+        }
+
+        @media (max-width: 480px) {
+            .screen-title { font-size: 2em; }
+            .btn { padding: 12px 24px; font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="gameArea">
+            <div id="hud">
+                <div id="score">Score: 0</div>
+                <div id="highScore">Best: 0</div>
+                <div id="level">Level 1</div>
+                <div id="powerUpStatus"></div>
+            </div>
+            
+            <div id="ground">
+                <div class="ground-decoration" style="bottom: 30px; animation-delay: 0s;"></div>
+                <div class="ground-decoration" style="bottom: 50px; animation-delay: 1s;"></div>
+                <div class="ground-decoration" style="bottom: 40px; animation-delay: 2s;"></div>
+            </div>
+            
+            <div id="player"></div>
+        </div>
+
+        <div id="startScreen" class="screen-overlay">
+            <div class="screen-content">
+                <h1 class="screen-title">🚀 TAP DASH PRO</h1>
+                <p class="screen-subtitle">Experience the ultimate jumping adventure with power-ups, achievements, and premium gameplay!</p>
+                <button class="btn btn-primary" onclick="startGame()">START GAME</button>
+                <button class="btn btn-secondary" onclick="showInstructions()">HOW TO PLAY</button>
+            </div>
+        </div>
+
+        <div id="instructionsScreen" class="screen-overlay" style="display: none;">
+            <div class="screen-content">
+                <h2 class="screen-title">How to Play</h2>
+                <p class="screen-subtitle">
+                    • Tap anywhere to jump<br>
+                    • Avoid obstacles to survive<br>
+                    • Collect power-ups for special abilities<br>
+                    • 🛡️ Shield protects from obstacles<br>
+                    • ⚡ Speed boost increases game speed<br>
+                    • 🚀 Jump boost gives higher jumps
+                </p>
+                <button class="btn btn-primary" onclick="hideInstructions()">GOT IT!</button>
+            </div>
+        </div>
+
+        <div id="gameOverScreen" class="screen-overlay" style="display: none;">
+            <div class="screen-content">
+                <h2 class="screen-title">Game Over</h2>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="finalScore">0</div>
+                        <div class="stat-label">SCORE</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="finalLevel">1</div>
+                        <div class="stat-label">LEVEL</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="obstaclesAvoided">0</div>
+                        <div class="stat-label">OBSTACLES</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="powerUpsCollected">0</div>
+                        <div class="stat-label">POWER-UPS</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="restartGame()">PLAY AGAIN</button>
+                <button class="btn btn-secondary" onclick="goToMenu()">MAIN MENU</button>
+            </div>
+        </div>
+
+        <div id="pauseScreen" class="screen-overlay" style="display: none;">
+            <div class="screen-content">
+                <h2 class="screen-title">Paused</h2>
+                <button class="btn btn-primary" onclick="resumeGame()">RESUME</button>
+                <button class="btn btn-secondary" onclick="goToMenu()">MAIN MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="achievement" class="achievement">
+        <div style="font-weight: bold;">Achievement Unlocked!</div>
+        <div id="achievementText">First Jump!</div>
+    </div>
+
+    <script>
+        // Game state object
+        let gameState = {
+            isPlaying: false,
+            isPaused: false,
+            score: 0,
+            highScore: 0,
+            level: 1,
+            obstacles: [],
+            powerUps: [],
+            playerY: 0,
+            playerVelocity: 0,
+            gravity: 0.6,
+            jumpPower: -12,
+            gameSpeed: 3,
+            baseSpeed: 3,
+            obstacleSpawnTimer: 0,
+            powerUpSpawnTimer: 0,
+            obstaclesAvoided: 0,
+            powerUpsCollected: 0,
+            shield: { active: false, timer: 0 },
+            speedBoost: { active: false, timer: 0 },
+            jumpBoost: { active: false, timer: 0 },
+            achievements: new Set(),
+            trailTimer: 0
+        };
+
+        // DOM elements
+        const elements = {
+            gameContainer: document.getElementById('gameContainer'),
+            player: document.getElementById('player'),
+            score: document.getElementById('score'),
+            highScore: document.getElementById('highScore'),
+            level: document.getElementById('level'),
+            powerUpStatus: document.getElementById('powerUpStatus'),
+            startScreen: document.getElementById('startScreen'),
+            instructionsScreen: document.getElementById('instructionsScreen'),
+            gameOverScreen: document.getElementById('gameOverScreen'),
+            pauseScreen: document.getElementById('pauseScreen'),
+            finalScore: document.getElementById('finalScore'),
+            finalLevel: document.getElementById('finalLevel'),
+            obstaclesAvoided: document.getElementById('obstaclesAvoided'),
+            powerUpsCollected: document.getElementById('powerUpsCollected'),
+            achievement: document.getElementById('achievement'),
+            achievementText: document.getElementById('achievementText')
+        };
+
+        // Initialize high score from localStorage
+        function initHighScore() {
+            const saved = localStorage.getItem('tapDashHighScore');
+            gameState.highScore = saved ? parseInt(saved) : 0;
+            updateHighScoreDisplay();
+        }
+
+        function updateHighScoreDisplay() {
+            elements.highScore.textContent = `Best: ${gameState.highScore}`;
+        }
+
+        function showInstructions() {
+            elements.startScreen.style.display = 'none';
+            elements.instructionsScreen.style.display = 'flex';
+        }
+
+        function hideInstructions() {
+            elements.instructionsScreen.style.display = 'none';
+            elements.startScreen.style.display = 'flex';
+        }
+
+        function showAchievement(text) {
+            console.log('Achievement:', text); // Debug log
+            elements.achievementText.textContent = text;
+            elements.achievement.classList.add('show');
+            setTimeout(() => {
+                elements.achievement.classList.remove('show');
+            }, 3000);
+        }
+
+        function checkAchievements() {
+            if (gameState.score >= 10 && !gameState.achievements.has('score10')) {
+                gameState.achievements.add('score10');
+                showAchievement('Score Master - Reached 10 points!');
+            }
+            if (gameState.score >= 50 && !gameState.achievements.has('score50')) {
+                gameState.achievements.add('score50');
+                showAchievement('Champion - Reached 50 points!');
+            }
+            if (gameState.level >= 5 && !gameState.achievements.has('level5')) {
+                gameState.achievements.add('level5');
+                showAchievement('Speed Demon - Reached Level 5!');
+            }
+            if (gameState.powerUpsCollected >= 5 && !gameState.achievements.has('powerup5')) {
+                gameState.achievements.add('powerup5');
+                showAchievement('Power Collector - 5 Power-ups!');
+            }
+        }
+
+        function startGame() {
+            gameState.isPlaying = true;
+            gameState.isPaused = false;
+            gameState.score = 0;
+            gameState.level = 1;
+            gameState.obstacles = [];
+            gameState.powerUps = [];
+            gameState.playerY = 0;
+            gameState.playerVelocity = 0;
+            gameState.gameSpeed = gameState.baseSpeed;
+            gameState.obstacleSpawnTimer = 0;
+            gameState.powerUpSpawnTimer = 0;
+            gameState.obstaclesAvoided = 0;
+            gameState.powerUpsCollected = 0;
+            gameState.shield = { active: false, timer: 0 };
+            gameState.speedBoost = { active: false, timer: 0 };
+            gameState.jumpBoost = { active: false, timer: 0 };
+            gameState.trailTimer = 0;
+            
+            elements.startScreen.style.display = 'none';
+            elements.gameOverScreen.style.display = 'none';
+            elements.pauseScreen.style.display = 'none';
+            elements.instructionsScreen.style.display = 'none';
+            
+            // Clear existing elements
+            document.querySelectorAll('.obstacle, .power-up, .player-trail').forEach(el => el.remove());
+            
+            // Update UI
+            updateScore();
+            updateLevel();
+            
+            gameLoop();
+        }
+
+        function pauseGame() {
+            if (gameState.isPlaying && !gameState.isPaused) {
+                gameState.isPaused = true;
+                elements.pauseScreen.style.display = 'flex';
+            }
+        }
+
+        function resumeGame() {
+            gameState.isPaused = false;
+            elements.pauseScreen.style.display = 'none';
+            gameLoop();
+        }
+
+        function goToMenu() {
+            gameState.isPlaying = false;
+            gameState.isPaused = false;
+            elements.startScreen.style.display = 'flex';
+            elements.gameOverScreen.style.display = 'none';
+            elements.pauseScreen.style.display = 'none';
+            elements.instructionsScreen.style.display = 'none';
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        function jump() {
+            if (gameState.isPlaying && !gameState.isPaused) {
+                const jumpPower = gameState.jumpBoost.active ? gameState.jumpPower * 1.5 : gameState.jumpPower;
+                gameState.playerVelocity = jumpPower;
+            }
+        }
+
+        function createTrail() {
+            if (gameState.trailTimer % 3 === 0) {
+                const trail = document.createElement('div');
+                trail.className = 'player-trail';
+                trail.style.left = (60 + 15) + 'px';
+                trail.style.bottom = (120 + 15 - gameState.playerY) + 'px';
+                elements.gameContainer.appendChild(trail);
+                
+                setTimeout(() => trail.remove(), 500);
+            }
+            gameState.trailTimer++;
+        }
+
+        function createObstacle() {
+            const obstacle = document.createElement('div');
+            const types = ['normal', 'wide', 'tall'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            obstacle.className = `obstacle obstacle-${type}`;
+            
+            if (Math.random() < 0.3) {
+                obstacle.classList.add('obstacle-moving');
+            }
+            
+            obstacle.style.right = '0px';
+            elements.gameContainer.appendChild(obstacle);
+            
+            gameState.obstacles.push({
+                element: obstacle,
+                x: 400,
+                type: type,
+                passed: false
+            });
+        }
+
+        function createPowerUp() {
+            const powerUp = document.createElement('div');
+            const types = ['shield', 'speed', 'jump'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            powerUp.className = `power-up power-up-${type}`;
+            powerUp.style.right = '0px';
+            powerUp.style.bottom = (150 + Math.random() * 100) + 'px';
+            elements.gameContainer.appendChild(powerUp);
+            
+            gameState.powerUps.push({
+                element: powerUp,
+                x: 400,
+                type: type
+            });
+        }
+
+        function updatePlayer() {
+            gameState.playerVelocity += gameState.gravity;
+            gameState.playerY += gameState.playerVelocity;
+            
+            if (gameState.playerY > 0) {
+                gameState.playerY = 0;
+                gameState.playerVelocity = 0;
+            }
+            
+            elements.player.style.bottom = (120 - gameState.playerY) + 'px';
+            
+            if (gameState.shield.active) {
+                elements.player.classList.add('shield-active');
+            } else {
+                elements.player.classList.remove('shield-active');
+            }
+            
+            createTrail();
+        }
+
+        function updateObstacles() {
+            gameState.obstacles.forEach((obs, index) => {
+                obs.x -= gameState.gameSpeed;
+                obs.element.style.right = (400 - obs.x) + 'px';
+                
+                if (obs.x < -50) {
+                    obs.element.remove();
+                    gameState.obstacles.splice(index, 1);
+                    return;
+                }
+                
+                if (!obs.passed && obs.x < 60) {
+                    obs.passed = true;
+                    gameState.obstaclesAvoided++;
+                    gameState.score += obs.type === 'tall' ? 3 : obs.type === 'wide' ? 2 : 1;
+                    updateScore();
+                }
+                
+                // Collision detection
+                if (obs.x < 95 && obs.x > 25 && !gameState.shield.active) {
+                    const playerRect = { x: 60, y: 120 - gameState.playerY, width: 35, height: 35 };
+                    const obsRect = { 
+                        x: obs.x, 
+                        y: 120, 
+                        width: obs.type === 'wide' ? 40 : obs.type === 'tall' ? 20 : 25,
+                        height: obs.type === 'tall' ? 100 : obs.type === 'wide' ? 60 : 80
+                    };
+                    
+                    if (playerRect.x < obsRect.x + obsRect.width &&
+                        playerRect.x + playerRect.width > obsRect.x &&
+                        playerRect.y < obsRect.y + obsRect.height &&
+                        playerRect.y + playerRect.height > obsRect.y) {
+                        gameOver();
+                    }
+                }
+            });
+        }
+
+        function updatePowerUps() {
+            gameState.powerUps.forEach((powerUp, index) => {
+                powerUp.x -= gameState.gameSpeed;
+                powerUp.element.style.right = (400 - powerUp.x) + 'px';
+                
+                if (powerUp.x < -30) {
+                    powerUp.element.remove();
+                    gameState.powerUps.splice(index, 1);
+                    return;
+                }
+                
+                // Collection detection
+                if (powerUp.x < 95 && powerUp.x > 25) {
+                    const playerRect = { x: 60, y: 120 - gameState.playerY, width: 35, height: 35 };
+                    const powerUpRect = { x: powerUp.x, y: parseInt(powerUp.element.style.bottom), width: 30, height: 30 };
+                    
+                    if (playerRect.x < powerUpRect.x + powerUpRect.width &&
+                        playerRect.x + playerRect.width > powerUpRect.x &&
+                        playerRect.y < powerUpRect.y + powerUpRect.height &&
+                        playerRect.y + playerRect.height > powerUpRect.y) {
+                        
+                        collectPowerUp(powerUp.type);
+                        powerUp.element.remove();
+                        gameState.powerUps.splice(index, 1);
+                        gameState.powerUpsCollected++;
+                    }
+                }
+            });
+        }
+
+        function collectPowerUp(type) {
+            switch(type) {
+                case 'shield':
+                    gameState.shield = { active: true, timer: 300 };
+                    break;
+                case 'speed':
+                    gameState.speedBoost = { active: true, timer: 300 };
+                    gameState.gameSpeed = gameState.baseSpeed * 1.5;
+                    break;
+                case 'jump':
+                    gameState.jumpBoost = { active: true, timer: 300 };
+                    break;
+            }
+        }
+
+        function updatePowerUpStatus() {
+            let statusText = '';
+            if (gameState.shield.active) statusText += '🛡️ ';
+            if (gameState.speedBoost.active) statusText += '⚡ ';
+            if (gameState.jumpBoost.active) statusText += '🚀 ';
+            elements.powerUpStatus.textContent = statusText;
+            
+            // Countdown power-ups
+            if (gameState.shield.active && --gameState.shield.timer <= 0) {
+                gameState.shield.active = false;
+            }
+            if (gameState.speedBoost.active && --gameState.speedBoost.timer <= 0) {
+                gameState.speedBoost.active = false;
+                gameState.gameSpeed = gameState.baseSpeed;
+            }
+            if (gameState.jumpBoost.active && --gameState.jumpBoost.timer <= 0) {
+                gameState.jumpBoost.active = false;
+            }
+        }
+
+        function updateScore() {
+            elements.score.textContent = `Score: ${gameState.score}`;
+            
+            // Level progression
+            const newLevel = Math.floor(gameState.score / 15) + 1;
+            if (newLevel > gameState.level) {
+                gameState.level = newLevel;
+                gameState.baseSpeed += 0.3;
+                if (!gameState.speedBoost.active) {
+                    gameState.gameSpeed = gameState.baseSpeed;
+                }
+                updateLevel();
+            }
+            
+            checkAchievements();
+        }
+
+        function updateLevel() {
+            elements.level.textContent = `Level ${gameState.level}`;
+        }
+
+        function spawnElements() {
+            gameState.obstacleSpawnTimer++;
+            gameState.powerUpSpawnTimer++;
+            
+            const obstacleInterval = Math.max(60 - gameState.level * 2, 30);
+            if (gameState.obstacleSpawnTimer >= obstacleInterval) {
+                createObstacle();
+                gameState.obstacleSpawnTimer = 0;
+            }
+            
+            if (gameState.powerUpSpawnTimer >= 240) { // Every 4 seconds
+                if (Math.random() < 0.6) {
+                    createPowerUp();
+                }
+                gameState.powerUpSpawnTimer = 0;
+            }
+        }
+
+        function gameOver() {
+            gameState.isPlaying = false;
+            
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem('tapDashHighScore', gameState.highScore.toString());
+                setTimeout(() => showAchievement('New High Score! 🏆'), 100);
+            }
+            
+            elements.finalScore.textContent = gameState.score;
+            elements.finalLevel.textContent = gameState.level;
+            elements.obstaclesAvoided.textContent = gameState.obstaclesAvoided;
+            elements.powerUpsCollected.textContent = gameState.powerUpsCollected;
+            
+            setTimeout(() => {
+                elements.gameOverScreen.style.display = 'flex';
+            }, 1000);
+        }
+
+        function gameLoop() {
+            if (!gameState.isPlaying || gameState.isPaused) return;
+            
+            updatePlayer();
+            updateObstacles();
+            updatePowerUps();
+            updatePowerUpStatus();
+            spawnElements();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        elements.gameContainer.addEventListener('click', jump);
+        elements.gameContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            jump();
+        });
+
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                jump();
+            } else if (e.code === 'Escape' && gameState.isPlaying) {
+                if (gameState.isPaused) {
+                    resumeGame();
+                } else {
+                    pauseGame();
+                }
+            }
+        });
+
+        // Prevent scrolling on mobile
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Initialize the game
+        initHighScore();
+
+        // Make functions globally accessible
+        window.startGame = startGame;
+        window.showInstructions = showInstructions;
+        window.hideInstructions = hideInstructions;
+        window.restartGame = restartGame;
+        window.goToMenu = goToMenu;
+        window.resumeGame = resumeGame;
+        window.nextLevel = nextLevel;
+    </script>
+</body>
+</html>
